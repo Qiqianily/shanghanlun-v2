@@ -1,0 +1,424 @@
+# =============================================================================
+# 🐳 Remote Build & Deploy (Rust + Docker Compose)
+# 描述: 远程服务器构建 Rust 二进制 + Docker 镜像部署流程
+# 触发: Tag 推送 (v*) 或 手动触发 (workflow_dispatch)
+# 作者: Qiqianily
+# =============================================================================
+
+name: 🐳 Remote Build & Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'                          # 自动触发: v1.0.0, v2.3.1 等语义化版本
+  workflow_dispatch:                  # 手动触发: GitHub UI 按钮
+    inputs:
+      version:
+        description: '🏷️ 部署版本 (例如 1.0.0，留空则使用 latest)'
+        required: false
+        default: 'latest'
+        type: string
+      skip_tests:
+        description: '⏭️  跳过测试 (加速部署，生产环境建议关闭)'
+        type: boolean
+        required: false
+        default: true
+
+# ── 🌍 全局环境变量 ─────────────────────────────────────────────────────
+env:
+  # 📦 项目标识
+  PROJECT_NAME: 'shanghanlun'
+  BINARY_NAME: 'shanghanlun'
+  TCM_IMAGE_NAME: 'shanghanlun'
+
+  # 🗂️ 远程路径配置
+  REMOTE_SOURCE_DIR: '/dockers/medicine/backend/shanghanlun'
+  REMOTE_BUILD_DIR: '/dockers/medicine/backend/shanghanlun/build'
+  CARGO_CACHE_DIR: '/dockers/.cargo-cache'    # 全局 Cargo 缓存（跨项目复用）
+
+  # ⚙️ 构建配置
+  RUST_TARGET: 'x86_64-unknown-linux-musl'    # 静态编译目标
+  DOCKER_COMPOSE_FILE: 'docker-compose.yml'
+  ENV_FILE: '.env_prod'
+  CONFIG_FILE: 'prod.yml'
+
+  # 🔗 仓库信息
+  REPO_URL: 'https://github.com/Qiqianily/shanghanlun-v2.git'
+
+# ── 🔄 Jobs 定义 ───────────────────────────────────────────────────────
+jobs:
+  deploy:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production                 # 关联 GitHub Environment，便于管理密钥/审批
+
+    steps:
+      # ═══════════════════════════════════════════════════════════════
+      # 🔹 步骤 1: 🏷️ 提取并标准化版本号
+      # ═══════════════════════════════════════════════════════════════
+      - name: 🏷️ Extract version
+        id: version
+        run: |
+          # 优先级: 手动输入 > Tag 自动提取 > 默认 latest
+          if [[ "${{ github.event.inputs.version }}" != "" && "${{ github.event.inputs.version }}" != "latest" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v([0-9]+\.[0-9]+(\.[0-9]+)*) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+          else
+            VERSION="latest"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "✅ 确定部署版本: $VERSION (来源: ${{ github.event_name }})"
+
+      # ═══════════════════════════════════════════════════════════════
+      # 🔹 步骤 2: 🔐 配置 SSH 安全连接（防中间人攻击）
+      # ═══════════════════════════════════════════════════════════════
+
+      # 2.1 加载 SSH 私钥到 ssh-agent
+      - name: 🔑 Install SSH key
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # 2.2 配置 known_hosts（主机密钥验证）
+      - name: 🛡️ Configure SSH known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          if [[ -n "${{ secrets.SSH_KNOWN_HOSTS }}" ]]; then
+            # ✅ 推荐: 使用预配置的 known_hosts（安全可控）
+            echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+            echo "✅ 使用预配置的 known_hosts"
+          else
+            # ⚠️ 备选: 动态获取（首次连接时可能触发交互确认）
+            ssh-keyscan -H ${{ secrets.SSH_HOST }} 2>/dev/null >> ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+            echo "⚠️ 已动态获取 host key，建议后续配置 SSH_KNOWN_HOSTS 增强安全"
+          fi
+
+      # ═══════════════════════════════════════════════════════════════
+      # 🔹 步骤 3: 🏗️ 远程构建 + 部署（核心逻辑）
+      # ═══════════════════════════════════════════════════════════════
+      - name: 🏗️ Remote Build & Deploy
+        env:
+          # 🔐 Secrets（敏感信息）
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+
+          # 📦 构建参数
+          VERSION: ${{ steps.version.outputs.version }}
+          SKIP_TESTS: ${{ github.event.inputs.skip_tests || 'false' }}
+
+          # 🗂️ 路径配置（从全局 env 继承）
+          REMOTE_SOURCE_DIR: ${{ env.REMOTE_SOURCE_DIR }}
+          REMOTE_BUILD_DIR: ${{ env.REMOTE_BUILD_DIR }}
+          CARGO_CACHE_DIR: ${{ env.CARGO_CACHE_DIR }}
+
+          # 📦 项目标识
+          TCM_IMAGE_NAME: ${{ env.TCM_IMAGE_NAME }}
+          BINARY_NAME: ${{ env.BINARY_NAME }}
+
+          # ⚙️ 配置文件
+          ENV_FILE: ${{ env.ENV_FILE }}
+          CONFIG_FILE: ${{ env.CONFIG_FILE }}
+          DOCKER_COMPOSE_FILE: ${{ env.DOCKER_COMPOSE_FILE }}
+
+          # 🔗 仓库 & 编译
+          REPO_URL: ${{ env.REPO_URL }}
+          RUST_TARGET: ${{ env.RUST_TARGET }}
+
+        run: |
+          # ── 📡 SSH 远程执行脚本 ─────────────────────────────────────
+          # 使用 env 命令显式传递变量，避免 shell 转义问题
+          ssh "$SSH_USER@$SSH_HOST" "env \
+            VERSION=\"$VERSION\" \
+            SKIP_TESTS=\"$SKIP_TESTS\" \
+            REMOTE_SOURCE_DIR=\"$REMOTE_SOURCE_DIR\" \
+            REMOTE_BUILD_DIR=\"$REMOTE_BUILD_DIR\" \
+            CARGO_CACHE_DIR=\"$CARGO_CACHE_DIR\" \
+            TCM_IMAGE_NAME=\"$TCM_IMAGE_NAME\" \
+            BINARY_NAME=\"$BINARY_NAME\" \
+            ENV_FILE=\"$ENV_FILE\" \
+            CONFIG_FILE=\"$CONFIG_FILE\" \
+            DOCKER_COMPOSE_FILE=\"$DOCKER_COMPOSE_FILE\" \
+            REPO_URL=\"$REPO_URL\" \
+            RUST_TARGET=\"$RUST_TARGET\" \
+            bash -se" <<'REMOTE_SCRIPT'
+
+            # ═════════════════════════════════════════════════════════
+            # 🛡️ 远程脚本：安全策略 & 辅助函数
+            # ═════════════════════════════════════════════════════════
+            # set -e: 命令失败立即退出
+            # set -o pipefail: 管道中任一命令失败则整体失败
+            # (故意不用 -u: 避免可选变量未设置导致中断)
+            set -eo pipefail
+
+            # 🔍 关键变量校验（替代 set -u，错误信息更友好）
+            : "${REMOTE_SOURCE_DIR:?❌ REMOTE_SOURCE_DIR 未配置}"
+            : "${BINARY_NAME:?❌ BINARY_NAME 未配置}"
+            : "${VERSION:?❌ VERSION 未配置}"
+            : "${ENV_FILE:?❌ ENV_FILE 未传递}"
+            : "${DOCKER_COMPOSE_FILE:?❌ DOCKER_COMPOSE_FILE 未传递}"
+            : "${TCM_IMAGE_NAME:?❌ TCM_IMAGE_NAME 未传递}"
+            : "${CARGO_CACHE_DIR:?❌ CARGO_CACHE_DIR 未配置}"
+            : "${RUST_TARGET:?❌ RUST_TARGET 未配置}"
+
+            # 📝 日志函数（带时间戳 + 模块标签）
+            log() {
+              echo ">>> [$(date '+%H:%M:%S')] [$(printf '%-6s' $1)] $2"
+            }
+            error() {
+              echo "❌ [ERROR] $(date '+%H:%M:%S') $1" >&2
+            }
+
+            # ═════════════════════════════════════════════════════════
+            # 🔹 阶段 1: 🚀 环境初始化
+            # ═════════════════════════════════════════════════════════
+            log "INIT" "🔧 配置运行环境..."
+
+            # 📦 设置 Rust/Cargo 路径
+            export PATH="$HOME/.cargo/bin:$PATH"
+            export CARGO_HOME="$CARGO_CACHE_DIR"
+            export RUSTUP_HOME="$CARGO_CACHE_DIR/rustup"
+
+            # 🔍 验证核心工具链
+            log "INIT" "🔍 检查依赖工具..."
+            for cmd in git cargo docker rustup; do
+              if ! command -v "$cmd" &> /dev/null; then
+                error "$cmd 未安装或不在 PATH 中"
+                exit 1
+              fi
+            done
+            log "INIT" "✅ 所有工具链验证通过"
+
+            # 🦀 配置 Rust 工具链（幂等操作）
+            log "INIT" "🦀 配置 Rust (target: $RUST_TARGET)..."
+            rustup default stable >/dev/null 2>&1
+            rustup target add "$RUST_TARGET" >/dev/null 2>&1
+            log "INIT" "✅ Rust 就绪: $(rustc --version)"
+
+            # 🐳 验证 Docker Compose V2（插件模式）
+            if ! docker compose version &> /dev/null; then
+              error "docker compose (V2 插件) 不可用"
+              echo "💡 请执行: sudo apt install docker-compose-plugin"
+              exit 1
+            fi
+            COMPOSE_CMD="docker compose"
+            log "INIT" "✅ Docker Compose V2 就绪"
+
+            # ═════════════════════════════════════════════════════════
+            # 🔹 阶段 2: 📦 代码同步 & 版本检出
+            # ═════════════════════════════════════════════════════════
+            log "GIT" "📁 工作目录: $REMOTE_SOURCE_DIR"
+            mkdir -p "$REMOTE_SOURCE_DIR"
+            cd "$REMOTE_SOURCE_DIR"
+
+            # 🔄 首次克隆或复用现有仓库
+            if [[ ! -d ".git" ]]; then
+              log "GIT" "📥 首次克隆仓库..."
+              git clone --quiet "$REPO_URL" .
+            fi
+
+            # 🔄 同步最新标签 & 重置本地修改
+            git fetch --tags --force --quiet
+            git reset --hard HEAD --quiet
+
+            # 🏷️ 检出指定版本 Tag
+            TARGET_TAG="v$VERSION"
+            if ! git rev-parse "refs/tags/$TARGET_TAG" &>/dev/null; then
+              error "❌ Tag '$TARGET_TAG' 不存在！"
+              echo "📋 最近 10 个可用 tags:"
+              git tag -l | tail -10
+              exit 1
+            fi
+
+            # 使用 -B 强制创建/重置临时分支（避免分支冲突）
+            git checkout -B "deploy-temp-$VERSION" "$TARGET_TAG" --quiet
+            log "GIT" "✓ 已切换到 $TARGET_TAG"
+
+            # ═════════════════════════════════════════════════════════
+            # 🔹 阶段 3: ⚙️ 配置文件更新（版本注入）
+            # ═════════════════════════════════════════════════════════
+            log "CONFIG" "📄 更新版本配置..."
+
+            # 📄 更新 .env 文件
+            if [[ -f "$ENV_FILE" ]]; then
+              if grep -q '^CURRENT_VERSION=' "$ENV_FILE"; then
+                sed -i "s|^CURRENT_VERSION=.*|CURRENT_VERSION=$VERSION|" "$ENV_FILE"
+              else
+                echo "CURRENT_VERSION=$VERSION" >> "$ENV_FILE"
+              fi
+            else
+              echo "⚠️ $ENV_FILE 不存在，创建新文件"
+              echo "CURRENT_VERSION=$VERSION" > "$ENV_FILE"
+              echo "TCM_IMAGE_NAME=$TCM_IMAGE_NAME" >> "$ENV_FILE"
+            fi
+
+            # ⚙️ 更新 YAML 配置并同步到 conf 目录
+            if [[ -f "$CONFIG_FILE" ]]; then
+              sed -i "s|^version: \".*\"|version: \"$VERSION\"|" "$CONFIG_FILE"
+              mkdir -p "$(dirname "$CONFIG_FILE")/../conf"
+              cp "$CONFIG_FILE" "../conf/"
+              log "CONFIG" "✅ 配置文件已更新"
+            else
+              echo "⚠️ $CONFIG_FILE 不存在，跳过配置更新"
+            fi
+
+            # ═════════════════════════════════════════════════════════
+            # 🔹 阶段 4: 🔨 Rust 编译构建（支持条件跳过测试）
+            # ═════════════════════════════════════════════════════════
+            log "BUILD" "🔧 开始编译 (target: $RUST_TARGET)..."
+            mkdir -p "$CARGO_CACHE_DIR" "$REMOTE_BUILD_DIR"
+
+            # 🔧 设置 musl 交叉编译环境变量
+            export CC_x86_64_unknown_linux_musl=musl-gcc
+            export CARGO_BUILD_TARGET="$RUST_TARGET"
+
+            # 🧪 构建命令（可选是否运行测试）
+            BUILD_CMD="cargo build --release --target $RUST_TARGET"
+            if [[ "$SKIP_TESTS" != "true" ]]; then
+              BUILD_CMD="cargo test --target $RUST_TARGET && $BUILD_CMD"
+              log "BUILD" "🧪 模式: 运行测试 + 编译"
+            else
+              log "BUILD" "⏭️  模式: 跳过测试，直接编译"
+            fi
+
+            # ⏱️ 执行构建并计时
+            START_TIME=$(date +%s)
+            cd "$REMOTE_SOURCE_DIR"
+            eval "$BUILD_CMD"
+            BUILD_TIME=$(( $(date +%s) - START_TIME ))
+
+            # 📦 复制编译产物到构建目录（带版本号）
+            BIN_SRC="target/$RUST_TARGET/release/$BINARY_NAME"
+            BIN_DST="$REMOTE_BUILD_DIR/$BINARY_NAME-$VERSION"
+
+            if [[ ! -f "$BIN_SRC" ]]; then
+              error "❌ 编译产物不存在: $BIN_SRC"
+              exit 1
+            fi
+
+            cp "$BIN_SRC" "$BIN_DST"
+            chmod +x "$BIN_DST"
+            log "BUILD" "✓ 编译完成 (${BUILD_TIME}s) → $BIN_DST"
+
+            # ═════════════════════════════════════════════════════════
+            # 🔹 阶段 5: 🐳 Docker 镜像构建 & 容器部署
+            # ═════════════════════════════════════════════════════════
+            log "DOCKER" "📋 准备构建上下文..."
+
+            # 📋 复制二进制到项目根目录（供 Dockerfile COPY 使用）
+            cp "$BIN_DST" "$REMOTE_SOURCE_DIR/$BINARY_NAME"
+            chmod +x "$REMOTE_SOURCE_DIR/$BINARY_NAME"
+            log "DOCKER" "✓ 二进制已就绪: $BINARY_NAME"
+
+            # 🚀 启用构建优化
+            export CURRENT_VERSION="$VERSION"
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
+
+            # 🔨 构建镜像
+            log "DOCKER" "🔨 构建镜像 (Compose)..."
+            $COMPOSE_CMD --env-file "$ENV_FILE" -f "$DOCKER_COMPOSE_FILE" build --progress=plain
+
+            # 🛑 优雅停止旧服务（保留 30s 宽限期）
+            log "DOCKER" "🛑 停止旧服务..."
+            $COMPOSE_CMD --env-file "$ENV_FILE" -f "$DOCKER_COMPOSE_FILE" down --remove-orphans --timeout 30 || true
+
+            # 🚀 启动新服务
+            log "DOCKER" "🚀 启动新服务..."
+            $COMPOSE_CMD --env-file "$ENV_FILE" -f "$DOCKER_COMPOSE_FILE" up -d
+
+            # ═════════════════════════════════════════════════════════
+            # 🔹 阶段 6: ❤️ 健康检查（双重验证）
+            # ═════════════════════════════════════════════════════════
+            log "HEALTH" "⏳ 等待服务就绪 (最多 30s)..."
+
+            # 6.1 检查容器状态
+            for i in {1..10}; do
+              if $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" ps | grep -q 'Up'; then
+                log "HEALTH" "✅ 容器状态: Up"
+                break
+              fi
+              if [[ $i -eq 10 ]]; then
+                error "❌ 容器未正常启动"
+                $COMPOSE_CMD logs --tail=50
+                exit 1
+              fi
+              sleep 3
+            done
+
+            # 6.2 [可选] HTTP 端点健康检查（如果应用暴露了 /health）
+            # if command -v curl &> /dev/null && [[ -n "${HEALTH_ENDPOINT:-}" ]]; then
+            #   log "HEALTH" "🌐 探测健康端点: $HEALTH_ENDPOINT"
+            #   for i in {1..5}; do
+            #     if curl -sf "$HEALTH_ENDPOINT" &> /dev/null; then
+            #       log "HEALTH" "✓ HTTP 健康检查通过"
+            #       break
+            #     fi
+            #     [[ $i -eq 5 ]] && { error "❌ HTTP 健康检查失败"; exit 1; }
+            #     sleep 2
+            #   done
+            # fi
+
+            # ═════════════════════════════════════════════════════════
+            # 🔹 阶段 7: 🧹 资源清理（保留历史版本，释放磁盘）
+            # ═════════════════════════════════════════════════════════
+            log "CLEAN" "🗑️ 清理旧资源..."
+
+            # 🗑️ 保留最近 2 个历史镜像（排除 latest/<none>/当前版本）
+            docker images "$BINARY_NAME" --format "{{.Tag}} {{.ID}}" | \
+              grep -vE "^(latest|<none>|${VERSION}) " | \
+              sort -Vr | awk '{print $2}' | tail -n +3 | \
+              xargs -r docker rmi -f 2>/dev/null || true
+
+            # 🗑️ 保留最近 2 个历史二进制文件
+            ls -t "$REMOTE_BUILD_DIR/${BINARY_NAME}-"* 2>/dev/null | \
+              tail -n +3 | xargs -r rm -f || true
+
+            # 🗑️ 清理 24h+ 的悬空镜像（dangling）
+            docker image prune -f --filter "until=24h" >/dev/null 2>&1
+
+            # ═════════════════════════════════════════════════════════
+            # 🔹 🎉 部署完成
+            # ═════════════════════════════════════════════════════════
+            log "DONE" "   🎉✨ 部署成功！"
+            log "DONE" "   📦 版本: $VERSION"
+            log "DONE" "   ⏱️  构建耗时: ${BUILD_TIME}s"
+            log "DONE" "   🐳 镜像: ${TCM_IMAGE_NAME}:${VERSION}"
+            log "DONE" "   🔗 查看日志: $COMPOSE_CMD -f $DOCKER_COMPOSE_FILE logs -f"
+
+          REMOTE_SCRIPT
+        # ⏰ 防止构建卡死（根据项目复杂度调整）
+        timeout-minutes: 45
+
+      # ═══════════════════════════════════════════════════════════════
+      # 🔹 步骤 4: 📢 部署通知（可选，需配置 webhook）
+      # ═══════════════════════════════════════════════════════════════
+      # - name: 📢 Notify Slack
+      #   if: always()  # 无论成功/失败都发送
+      #   uses: 8398a7/action-slack@v3
+      #   with:
+      #     status: ${{ job.status }}
+      #     fields: repo,commit,author,workflow,job,took
+      #     text: "🚀 部署 ${{ steps.version.outputs.version }} ${{ job.status == 'success' && '✅ 成功' || '❌ 失败' }}"
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #   continue-on-error: true  # 通知失败不影响部署状态
+
+      # - name: 📢 Notify DingTalk / WeCom / Feishu
+      #   if: always()
+      #   run: |
+      #     # 示例: 发送钉钉通知
+      #     curl -X POST "${{ secrets.DINGTALK_WEBHOOK }}" \
+      #       -H 'Content-Type: application/json' \
+      #       -d "{
+      #         \"msgtype\": \"markdown\",
+      #         \"markdown\": {
+      #           \"title\": \"🚀 部署通知\",
+      #           \"text\": \"## 🚀 shanghanlun 部署${{ job.status == 'success' && '✅ 成功' || '❌ 失败' }}\\n\\n- 📦 版本: ${{ steps.version.outputs.version }}\\n- 🔗 提交: ${{ github.sha }}\\n- ⏱️ 耗时: ${{ job.status == 'success' && '见日志' || '-' }}\\n- 👤 触发: ${{ github.actor }}\"
+      #         }
+      #       }"
+      #   continue-on-error: true

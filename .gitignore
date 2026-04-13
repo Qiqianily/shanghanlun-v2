@@ -1,0 +1,10 @@
+/target
+build/
+.DS_Store
+.idea/
+.env
+logs/
+dev.http
+dev.toml
+prod.http
+shanghanlun

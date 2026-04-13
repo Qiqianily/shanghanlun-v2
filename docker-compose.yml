@@ -1,0 +1,35 @@
+# version: "3.8"
+
+networks:
+  medicine:
+    driver: bridge
+    external: true
+    name: medicine
+    # ipam:
+    #   config:
+    #     - subnet: 172.20.0.0/16
+
+services:
+  medicine_backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${CURRENT_VERSION:-latest}
+    image: ${TCM_IMAGE_NAME}:${CURRENT_VERSION:-latest}
+    container_name: ${TCM_IMAGE_NAME}
+    env_file: .env_prod # 📄 环境变量文件
+    restart: unless-stopped
+    ports:
+      - "${PORT:-7788}:7788"
+    environment:
+      - CURRENT_VERSION=${CURRENT_VERSION:-latest}
+    volumes:
+      - /dockers/medicine/backend/conf:/app/conf:ro
+      - /dockers/medicine/backend/data:/app/data
+      - /dockers/medicine/backend/log:/app/logs
+    networks:
+      - medicine
+    labels:
+      - "version=${CURRENT_VERSION:-latest}"
+      - "service=medicine_backend"

@@ -1,0 +1,8 @@
+.git
+.github
+.gitignore
+target/
+build/
+*.log
+.env*
+!shanghanlun  # 明确包含二进制
