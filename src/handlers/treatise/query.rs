@@ -20,7 +20,11 @@ pub async fn query_treatise_by_id_handler(
     // Extension(_principal): Extension<Principal>,
     ValidPath(params): ValidPath<QueryTreatiseIdParam>,
 ) -> ApiResult<ApiResponse<TreatiseModel>> {
-    let query_str = "SELECT id, uuid, chapter, section_number, content FROM treatise WHERE id = $1";
+    let query_str = r#"
+        SELECT id, uuid, chapter, section_number, content
+        FROM treatise
+        WHERE id = $1;
+        "#;
     // 根据 ID 查询原文信息
     // let treatise: TreatiseModel = sqlx::query_as!(
     //     TreatiseModel,
@@ -49,13 +53,13 @@ pub async fn query_treatise_by_keyword_handler(
     // Extension(_principal): Extension<Principal>,
     ValidQuery(QueryKeywordParam { keyword }): ValidQuery<QueryKeywordParam>,
 ) -> ApiResult<ApiResponse<PaginationResult<TreatiseModel>>> {
-    let query_str = r#"SELECT id, uuid, chapter, section_number, content
-     FROM treatise
-     WHERE EXISTS (
-         SELECT 1 FROM unnest(content) AS elem
-         WHERE elem LIKE $1
-     )
-     ORDER BY id;"#;
+    let query_str = r#"
+        SELECT id, uuid, chapter, section_number, content
+        FROM treatise
+        WHERE EXISTS ( SELECT 1 FROM unnest(content) AS elem
+            WHERE elem LIKE $1
+        )
+        ORDER BY id;"#;
     // 根据关键字模糊查询
     let treatise_models = sqlx::query_as::<_, TreatiseModel>(query_str)
         .bind(format!("%{}%", keyword))

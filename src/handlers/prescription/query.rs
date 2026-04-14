@@ -106,7 +106,15 @@ pub async fn find_prescriptions_by_ingredients_handler(
         .into_iter()
         .collect();
     if ingredients.is_empty() {
-        return Ok(ApiResponse::err("请至少提供一味有效药物"));
+        let empty_result = PaginationResult::from_pagination_params(
+            Pagination::initial_zero(),
+            0,
+            Vec::<PrescriptionModel>::new(),
+        );
+        return Ok(ApiResponse::ok(
+            "请至少提供一味有效药物",
+            Some(empty_result),
+        ));
     }
     // 构造 sql 查询语句
     let query_str = r#"SELECT id, uuid, name, ingredients, dosage, usage, function
