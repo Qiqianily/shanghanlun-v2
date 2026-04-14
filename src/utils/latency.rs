@@ -37,7 +37,7 @@ pub struct LogOnRequest;
 
 impl<B> OnRequest<B> for LogOnRequest {
     fn on_request(&mut self, request: &Request<B>, _span: &Span) {
-        tracing::info!("➡️ ✅ {} {}", request.method(), request.uri().path());
+        tracing::info!("➡️  {} {}  ✅", request.method(), request.uri().path());
     }
 }
 

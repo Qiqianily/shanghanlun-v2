@@ -1,6 +1,8 @@
 pub mod app;
+pub mod common;
 pub mod conf;
 pub mod db;
+pub mod handlers;
 pub mod logger;
 pub mod middlewares;
 pub mod response;
