@@ -14,3 +14,10 @@ pub struct PaginationParams {
     #[serde(flatten)]
     pub pagination: Pagination,
 }
+
+/// 定义药物名字组成的参数，最多 20 味
+#[derive(Debug, serde::Deserialize, validator::Validate)]
+pub struct IngredientsParams {
+    #[validate(length(min = 1, max = 20, message = "药物组成数量不能太多20个以内"))]
+    pub ingredients: Vec<String>,
+}
