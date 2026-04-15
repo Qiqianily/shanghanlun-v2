@@ -23,8 +23,11 @@ pub async fn query_prescription_by_id_handler(
     ValidPath(params): ValidPath<QueryPrescriptionIdParam>,
 ) -> ApiResult<ApiResponse<PrescriptionModel>> {
     // 查询语句
-    let query_str =
-        "SELECT id, uuid, name,ingredients, dosage,usage,function FROM prescription WHERE id = $1";
+    let query_str = r#"
+        SELECT id, uuid, name, ingredients, dosage, usage, function
+        FROM prescription
+        WHERE id = $1;
+        "#;
     // 执行查询，如果没有查到就返回自定义错误
     let prescription_model = sqlx::query_as::<_, PrescriptionModel>(query_str)
         .bind(params.id)
