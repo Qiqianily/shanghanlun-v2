@@ -53,4 +53,9 @@ impl<T> PaginationResult<T> {
     pub fn from_pagination_params(pagination: Pagination, total: u64, item: Vec<T>) -> Self {
         Self::new(pagination.page, pagination.size, total, item)
     }
+
+    // 返回一个空的分页结果
+    pub fn empty() -> Self {
+        Self::new(0, 0, 0, Vec::new())
+    }
 }

@@ -45,11 +45,7 @@ pub async fn query_herbs_by_name_or_alias_handler(
 ) -> ApiResult<ApiResponse<PaginationResult<ShenNongHerbsModel>>> {
     // 如果关键字为空白，直接返回空结果（或根据业务需求返回错误）
     if keyword.trim().is_empty() {
-        let empty_result = PaginationResult::from_pagination_params(
-            Pagination::initial_zero(),
-            0,
-            Vec::<ShenNongHerbsModel>::new(),
-        );
+        let empty_result = PaginationResult::<ShenNongHerbsModel>::empty();
         return Ok(ApiResponse::ok(
             "未提供有效的搜索关键字",
             Some(empty_result),

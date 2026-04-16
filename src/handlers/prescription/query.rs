@@ -109,11 +109,7 @@ pub async fn find_prescriptions_by_ingredients_handler(
         .into_iter()
         .collect();
     if ingredients.is_empty() {
-        let empty_result = PaginationResult::from_pagination_params(
-            Pagination::initial_zero(),
-            0,
-            Vec::<PrescriptionModel>::new(),
-        );
+        let empty_result = PaginationResult::<PrescriptionModel>::empty();
         return Ok(ApiResponse::ok(
             "请至少提供一味有效药物",
             Some(empty_result),
@@ -132,11 +128,7 @@ pub async fn find_prescriptions_by_ingredients_handler(
 
     // 如果没有找到数据
     if prescription_models.is_empty() {
-        let empty_result = PaginationResult::from_pagination_params(
-            Pagination::initial_zero(),
-            0,
-            Vec::<PrescriptionModel>::new(),
-        );
+        let empty_result = PaginationResult::<PrescriptionModel>::empty();
         return Ok(ApiResponse::ok(
             "伤寒论中没有任何一张方剂中同时用到这几味药物！",
             Some(empty_result),

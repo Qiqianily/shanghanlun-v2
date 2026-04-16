@@ -76,14 +76,14 @@ pub async fn find_treatises_by_prescription_name_handler(
 ) -> ApiResult<ApiResponse<PrescriptionNameToTreatise>> {
     // 1. 判空：如果方剂名称为空字符串，直接返回空结果
     if params.name.trim().is_empty() {
-        return Err(ApiError::Biz("方剂名称不能为空".to_string()));
-        // return Ok(ApiResponse::ok(
-        //     "方剂名称不能为空",
-        //     Some(PrescriptionNameToTreatise {
-        //         total: 0,
-        //         treatises: Some(Vec::new()),
-        //     }),
-        // ));
+        // return Err(ApiError::Biz("方剂名称不能为空".to_string()));
+        return Ok(ApiResponse::ok(
+            "方剂名称不能为空",
+            Some(PrescriptionNameToTreatise {
+                total: 0,
+                treatises: Some(Vec::new()),
+            }),
+        ));
     }
     // 2. 先根据方剂名称查询
     let prescription_query_str = r#"
