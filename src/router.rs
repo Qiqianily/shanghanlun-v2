@@ -9,6 +9,7 @@ pub mod herbs;
 pub mod prescription;
 pub mod relations;
 pub mod show_api;
+pub mod sub_formula;
 pub mod syndrome;
 pub mod treatise;
 pub mod version;
@@ -27,6 +28,7 @@ pub fn merge_router() -> axum::Router<AppState> {
         .nest("/herbs", herbs::create_treatise_router())
         .nest("/syndrome", syndrome::create_syndrome_router())
         .nest("/formula", formula::create_formula_router())
+        .nest("/sub_formula", sub_formula::create_sub_formula_router())
         .fallback(async || -> ApiResult<()> {
             // 路径找不到
             tracing::warn!("Not Found");
