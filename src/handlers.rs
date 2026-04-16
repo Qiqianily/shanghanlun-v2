@@ -1,3 +1,4 @@
+pub mod explanation;
 pub mod formula;
 pub mod herbs;
 pub mod prescription;

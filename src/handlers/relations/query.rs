@@ -40,7 +40,8 @@ pub async fn query_treatise_prescriptions_by_id_handler(
         SELECT p.id, p.uuid, p.name, p.ingredients, p.dosage, p.usage, p.function
         FROM prescription p
         JOIN treatise_prescription tp ON p.id = tp.prescription_id
-        WHERE tp.treatise_id = $1;
+        WHERE tp.treatise_id = $1
+        ORDER BY p.id;
         "#;
     // 查询关联的方剂
     let prescriptions = sqlx::query_as::<_, PrescriptionModel>(relation_query_str)
@@ -226,13 +227,6 @@ pub async fn query_treatise_prescription_pages_handler(
     // 每页查询多少条数据
     let offset = ((page - 1) * size) as i64;
     let limit = size as i64;
-    tracing::info!(
-        "page: {}, size: {}, offset: {}, limit: {}",
-        page,
-        size,
-        offset,
-        limit
-    );
     // 1. 先分页查询原文
     let treatise_query_str = r#"
         SELECT id, uuid, chapter, section_number, content

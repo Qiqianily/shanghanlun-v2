@@ -3,6 +3,7 @@ use crate::{
     state::AppState,
 };
 
+pub mod explanation;
 pub mod formula;
 pub mod healthy;
 pub mod herbs;
@@ -29,6 +30,10 @@ pub fn merge_router() -> axum::Router<AppState> {
         .nest("/syndrome", syndrome::create_syndrome_router())
         .nest("/formula", formula::create_formula_router())
         .nest("/sub_formula", sub_formula::create_sub_formula_router())
+        .nest(
+            "/explanations",
+            explanation::hu::create_explanation_hu_router(),
+        )
         .fallback(async || -> ApiResult<()> {
             // 路径找不到
             tracing::warn!("Not Found");
