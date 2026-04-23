@@ -37,5 +37,8 @@ pub async fn show_api() -> anyhow::Result<()> {
     tracing::info!("GET   /api/v1/explanations/hu/query/info/id/:id");
     tracing::info!("POST  /api/v1/explanations/hu/query/explanations/paginate");
     tracing::info!("POST  /api/v1/explanations/hu/create/explanation");
+    tracing::info!("POST  /api/v1/visitor/create/info");
+    tracing::info!("GET   /api/v1/visitor/query/info/by/days/:days/:start");
+    tracing::info!("GET   /api/v1/visitor/query/info/by/today");
     Ok(())
 }

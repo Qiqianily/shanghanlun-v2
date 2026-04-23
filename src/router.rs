@@ -14,6 +14,7 @@ pub mod sub_formula;
 pub mod syndrome;
 pub mod treatise;
 pub mod version;
+pub mod visitor;
 
 /// combine all the routes into one router
 pub fn merge_router() -> axum::Router<AppState> {
@@ -34,6 +35,7 @@ pub fn merge_router() -> axum::Router<AppState> {
             "/explanations",
             explanation::hu::create_explanation_hu_router(),
         )
+        .nest("/visitor", visitor::create_visitor_router())
         .fallback(async || -> ApiResult<()> {
             // 路径找不到
             tracing::warn!("Not Found");

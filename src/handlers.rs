@@ -7,3 +7,4 @@ pub mod shared;
 pub mod sub_formula;
 pub mod syndrome;
 pub mod treatise;
+pub mod visitor;

@@ -4,7 +4,7 @@ version = "2.0.0"
 edition = "2024"
 authors = ["Qiqianily <Joedian@163.com>"]
 description = "伤寒论相关"
-rust-version = "1.94.1"
+rust-version = "1.95.0"
 license = "MIT"
 
 [[bin]]
@@ -36,3 +36,4 @@ bytesize = "2.3"
 jsonwebtoken = { version = "10.3", features = ["aws_lc_rs"] }
 uuid = { version = "1.23", features = ["v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.11"
