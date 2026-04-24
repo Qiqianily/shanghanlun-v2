@@ -12,7 +12,7 @@ pub fn create_visitor_router() -> axum::Router<AppState> {
             axum::routing::get(visitor::query::query_visitors_by_days_handler),
         )
         .route(
-            "/query/info/by/today",
+            "/query/info/by/today/{today}",
             axum::routing::get(visitor::query::query_visitors_by_give_date_handler),
         )
 }
