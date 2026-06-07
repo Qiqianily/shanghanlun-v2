@@ -2,9 +2,8 @@
 
 networks:
   medicine:
-    driver: bridge
     external: true
-    name: medicine
+    name: medicine # 使用已存在的网络，name 与已存在的网络名称一致时，可以省略不写
     # ipam:
     #   config:
     #     - subnet: 172.20.0.0/16

@@ -10,17 +10,17 @@ name: 🐳 Remote Build & Deploy
 on:
   push:
     tags:
-      - 'v*' # 自动触发: v1.0.0, v2.3.1 等语义化版本
+      - "v*" # 自动触发: v1.0.0, v2.3.1 等语义化版本
   workflow_dispatch:
     # 手动触发: GitHub UI 按钮
     inputs:
       version:
-        description: '🏷️ 部署版本 (例如 1.0.0，留空则使用 latest)'
+        description: "🏷️ 部署版本 (例如 1.0.0，留空则使用 latest)"
         required: false
-        default: 'latest'
+        default: "latest"
         type: string
       skip_tests:
-        description: '⏭️  跳过测试 (加速部署，生产环境建议关闭)'
+        description: "⏭️  跳过测试 (加速部署，生产环境建议关闭)"
         type: boolean
         required: false
         default: true
@@ -28,22 +28,22 @@ on:
 # ── 🌍 全局环境变量 ─────────────────────────────────────────────────────
 env:
   # 📦 项目标识
-  PROJECT_NAME: 'shanghanlun'
-  BINARY_NAME: 'shanghanlun'
-  TCM_IMAGE_NAME: 'shanghanlun'
+  PROJECT_NAME: "shanghanlun"
+  BINARY_NAME: "shanghanlun"
+  TCM_IMAGE_NAME: "shanghanlun"
 
   # 🗂️ 远程路径配置（不再使用自定义 CARGO_CACHE_DIR，Rust 将使用默认 ~/.cargo）
-  REMOTE_SOURCE_DIR: '/dockers/medicine/backend/shanghanlun'
-  REMOTE_BUILD_DIR: '/dockers/medicine/backend/shanghanlun/build'
+  REMOTE_SOURCE_DIR: "/dockers/medicine/backend/shanghanlun"
+  REMOTE_BUILD_DIR: "/dockers/medicine/backend/shanghanlun/build"
 
   # ⚙️ 构建配置
-  RUST_TARGET: 'x86_64-unknown-linux-musl' # 静态编译目标
-  DOCKER_COMPOSE_FILE: 'docker-compose.yml'
-  ENV_FILE: '.env_prod'
-  CONFIG_FILE: 'prod.yml'
+  RUST_TARGET: "x86_64-unknown-linux-musl" # 静态编译目标
+  DOCKER_COMPOSE_FILE: "docker-compose.yml"
+  ENV_FILE: ".env_prod"
+  CONFIG_FILE: "prod.yml"
 
   # 🔗 仓库信息
-  REPO_URL: 'https://github.com/Qiqianily/shanghanlun-v2.git'
+  REPO_URL: "https://github.com/Qiqianily/shanghanlun-v2.git"
 
 # ── 🔄 Jobs 定义 ───────────────────────────────────────────────────────
 jobs:
@@ -86,7 +86,7 @@ jobs:
             chmod 600 ~/.ssh/known_hosts
             echo "✅ 使用预配置的 known_hosts"
           else
-            ssh-keyscan -H ${{ secrets.SSH_HOST }} 2>/dev/null >> ~/.ssh/known_hosts
+            ssh-keyscan -p ${{ secrets.REMOTE_SSH_PORT }} -H ${{ secrets.SSH_HOST }} 2>/dev/null >> ~/.ssh/known_hosts
             chmod 600 ~/.ssh/known_hosts
             echo "⚠️ 已动态获取 host key，建议后续配置 SSH_KNOWN_HOSTS 增强安全"
           fi
