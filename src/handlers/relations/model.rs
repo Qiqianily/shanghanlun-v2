@@ -52,3 +52,11 @@ pub struct TreatisePrescriptionJoin {
     pub usage: Option<String>,
     pub function: Option<String>,
 }
+
+#[derive(serde::Deserialize, Debug, validator::Validate)]
+pub struct CreateRelationParams {
+    #[validate(range(min = 1, max = 1000, message = "查询条文的 id 必须在 1-1000 之间"))]
+    pub treatise_id: i32,
+    #[validate(range(min = 1, max = 500, message = "查询方剂的 id 必须在 1-500 之间"))]
+    pub prescription_id: i32,
+}

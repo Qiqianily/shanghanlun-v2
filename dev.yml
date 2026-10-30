@@ -7,12 +7,12 @@ base:
   log_level: "info"
   allowed_hosts:
     - "http://shanghanlun.com:7777"
-    - "http://45.113.2.53:7777"
+    - "http://103.52.152.131:7777"
     - "http://localhost:5173"
     - "http://localhost:7788"
 # database configuration
 database:
-  url: "postgres://postgres:yx379099@45.113.2.53:5466/medicine?options=-c%20timezone=Asia/Shanghai"
+  url: "postgres://postgres:yx379099@103.52.152.131:5466/medicine?options=-c%20timezone=Asia/Shanghai"
   min_connections: 3 # 最小连接数
   max_connections: 10 # 最大连接数
   connect_timeout_secs: 10
@@ -24,7 +24,7 @@ database:
   timezone: "Asia/Shanghai"
 # redis configuration
 redis:
-  url: "redis://:yx379099@45.113.2.53:6388"
+  url: "redis://:yx379099@103.52.152.131:6388"
   max_open: 20 # 最大连接数
   max_idle: 10 # 最大空闲数
   timeout_sec: 5 # 超时 5 秒

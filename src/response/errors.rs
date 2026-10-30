@@ -9,6 +9,8 @@ use crate::response::resp::ApiResponse;
 pub enum ApiError {
     #[error("{0}")]
     Biz(String),
+    #[error("{0}")]
+    ChapterSectionOccupied(String),
     #[error("没找到！")]
     NotFound,
     #[error("方法不支持！")]
@@ -43,6 +45,7 @@ impl ApiError {
             ApiError::MethodNotAllowed => axum::http::StatusCode::METHOD_NOT_ALLOWED,
             ApiError::Unauthenticated(_) => axum::http::StatusCode::UNAUTHORIZED,
             ApiError::ValidationError(_)
+            | ApiError::ChapterSectionOccupied(_)
             | ApiError::QueryError(_)
             | ApiError::PathError(_)
             | ApiError::JsonError(_)

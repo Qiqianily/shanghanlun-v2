@@ -6,10 +6,10 @@ base:
   port: 7788
   log_level: "info"
   allowed_hosts:
-    - "http://45.113.2.53"
+    - "http://103.52.152.131"
     - "http://qiqianily.top"
     - "https://qiqianily.top"
-    - "http://45.113.2.53:7777"
+    - "http://103.52.152.131:7777"
     - "http://localhost:5173"
     - "http://localhost:7788"
 # database configuration

@@ -32,6 +32,7 @@ macro_rules! impl_from_request {
         where
             S: Send + Sync,
             Valid<$wrapper<T>>: FromRequestParts<S, Rejection = ApiError>,
+            ApiError: From<<Valid<$wrapper<T>> as FromRequestParts<S>>::Rejection>,
         {
             type Rejection = ApiError;
 
@@ -39,7 +40,10 @@ macro_rules! impl_from_request {
                 parts: &mut Parts,
                 state: &S,
             ) -> Result<Self, Self::Rejection> {
-                Ok($name(Valid::from_request_parts(parts, state).await?.0.0))
+                let v = Valid::<$wrapper<T>>::from_request_parts(parts, state)
+                    .await
+                    .map_err(|e| ApiError::from(e))?;
+                Ok($name(v.0.0))
             }
         }
     };
@@ -48,11 +52,15 @@ macro_rules! impl_from_request {
         where
             S: Send + Sync,
             Valid<$wrapper<T>>: FromRequest<S, Rejection = ApiError>,
+            ApiError: From<<Valid<$wrapper<T>> as FromRequest<S>>::Rejection>,
         {
             type Rejection = ApiError;
 
             async fn from_request(request: Request, state: &S) -> Result<Self, Self::Rejection> {
-                Ok($name(Valid::from_request(request, state).await?.0.0))
+                let v = Valid::<$wrapper<T>>::from_request(request, state)
+                    .await
+                    .map_err(|e| ApiError::from(e))?;
+                Ok($name(v.0.0))
             }
         }
     };
@@ -61,3 +69,36 @@ macro_rules! impl_from_request {
 impl_from_request!(ValidPath, Path, FromRequestParts);
 impl_from_request!(ValidQuery, Query, FromRequestParts);
 impl_from_request!(ValidJson, Json, FromRequest);
+
+// /// 生成对应的 Path Query Json 校验代码
+// macro_rules! impl_from_request {
+//     ($name:ident, $wrapper:ident, FromRequestParts) => {
+//         impl<S, T> FromRequestParts<S> for $name<T>
+//         where
+//             S: Send + Sync,
+//             Valid<$wrapper<T>>: FromRequestParts<S, Rejection = ApiError>,
+//         {
+//             type Rejection = ApiError;
+//
+//             async fn from_request_parts(
+//                 parts: &mut Parts,
+//                 state: &S,
+//             ) -> Result<Self, Self::Rejection> {
+//                 Ok($name(Valid::from_request_parts(parts, state).await?.0.0))
+//             }
+//         }
+//     };
+//     ($name:ident, $wrapper:ident, FromRequest) => {
+//         impl<S, T> FromRequest<S> for $name<T>
+//         where
+//             S: Send + Sync,
+//             Valid<$wrapper<T>>: FromRequest<S, Rejection = ApiError>,
+//         {
+//             type Rejection = ApiError;
+//
+//             async fn from_request(request: Request, state: &S) -> Result<Self, Self::Rejection> {
+//                 Ok($name(Valid::from_request(request, state).await?.0.0))
+//             }
+//         }
+//     };
+// }

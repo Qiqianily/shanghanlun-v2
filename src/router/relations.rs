@@ -1,7 +1,12 @@
-use crate::{handlers::relations, state::AppState};
+use crate::{handlers::relations, middlewares::auth::layer::get_auth_layer, state::AppState};
 
 pub fn create_treatise_prescriptions_router() -> axum::Router<AppState> {
     axum::Router::new()
+        .route(
+            "/create/info",
+            axum::routing::post(relations::create::create_treatise_prescription_relation_handler),
+        )
+        .route_layer(get_auth_layer())
         .route(
             "/query/info/id/{id}",
             axum::routing::get(relations::query::query_treatise_prescriptions_by_id_handler),

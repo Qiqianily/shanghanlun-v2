@@ -16,6 +16,15 @@ pub struct PrescriptionModel {
 /// 定义查询方剂的 id 范围
 #[derive(Debug, serde::Deserialize, Clone, validator::Validate)]
 pub struct QueryPrescriptionIdParam {
-    #[validate(range(min = 1, max = 115, message = "查询方剂的 id 必须在 1-115 之间"))]
+    #[validate(range(min = 1, max = 500, message = "查询方剂的 id 必须在 1-500 之间"))]
     pub id: i32,
+}
+/// 定义创建方剂的参数
+#[derive(Debug, serde::Deserialize, Clone, validator::Validate)]
+pub struct CreatePrescriptionParam {
+    pub name: String,
+    pub ingredients: Vec<String>,
+    pub dosage: Option<String>,
+    pub usage: Option<String>,
+    pub function: Option<String>,
 }

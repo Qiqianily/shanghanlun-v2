@@ -4,7 +4,7 @@ version = "2.0.0"
 edition = "2024"
 authors = ["Qiqianily <Joedian@163.com>"]
 description = "伤寒论相关"
-rust-version = "1.95.0"
+rust-version = "1.99.1"
 license = "MIT"
 
 [[bin]]

@@ -1,8 +1,17 @@
-use crate::{handlers::prescription, state::AppState};
+use crate::{handlers::prescription, middlewares::auth::layer::get_auth_layer, state::AppState};
 
 /// 创建原文相关的路由，专门用来管理与原文相关的操作
 pub fn create_prescription_router() -> axum::Router<AppState> {
     axum::Router::new()
+        .route(
+            "/create/info",
+            axum::routing::post(prescription::create::create_prescription_info_handler),
+        )
+        .route(
+            "/update/info",
+            axum::routing::post(prescription::update::update_prescription_info_handler),
+        )
+        .route_layer(get_auth_layer())
         .route(
             "/query/info/id/{id}",
             axum::routing::get(prescription::query::query_prescription_by_id_handler),
